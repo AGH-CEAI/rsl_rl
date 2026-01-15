@@ -65,7 +65,7 @@ class ClearmlSummaryWriter(SummaryWriter):
             walltime=walltime,
             new_style=new_style,
         )
-        self.task.get_logger().report_scalar(self._map_path(tag), "series", scalar_value, iteration=global_step)
+        self.task.get_logger().report_scalar(tag, "series", scalar_value, iteration=global_step)
 
     def stop(self) -> None:
         self.task.close()
