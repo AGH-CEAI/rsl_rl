@@ -31,9 +31,15 @@ class ClearmlSummaryWriter(SummaryWriter):
             raise KeyError("Please specify clearml_project in the runner config, e.g. `legged_gym`.") from None
 
         # Initialize ClearML Task
-        self.task = Task.init(
-            project_name=project_name, task_name=run_name, auto_connect_frameworks={"tensorboard": False}
-        )
+        if Task.current_task() is not None:
+            self.task = Task.current_task()
+        else:
+            self.task = Task.init(
+                project_name=project_name,
+                task_name=run_name,
+                auto_connect_frameworks={"tensorboard": False},
+                reuse_last_task_id=False,
+            )
 
     def store_config(self, env_cfg: dict | object, train_cfg: dict) -> None:
         runner_cfg = dict(train_cfg)
