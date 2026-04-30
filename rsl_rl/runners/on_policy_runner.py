@@ -223,9 +223,7 @@ class OnPolicyRunner:
             raise ValueError("reset_last_layer_weights.part must be 'actor', 'critic', or 'both'")
 
         interval = cfg.get("interval", None)
-        if interval is None:
-            return {"enabled": False, "part": part, "interval": None}
-        if interval <= 0:
+        if interval is None or interval <= 0:
             return {"enabled": False, "part": part, "interval": None}
         if not isinstance(interval, int):
             raise ValueError("reset_last_layer_weights.interval must be an integer or omitted")
