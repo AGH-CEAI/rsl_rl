@@ -46,9 +46,7 @@ class OnPolicyRunner:
         self.alg = self._construct_algorithm(obs)
 
         # Parse reset-last-layer config
-        self.reset_last_layer_cfg = self._resolve_reset_last_layer_cfg(
-            self.alg_cfg.get("reset_last_layer_weights", None)
-        )
+        self.reset_last_layer_cfg = self._resolve_reset_last_layer_cfg(self.cfg.get("reset_last_layer_weights", None))
 
         # Create the logger
         self.logger = Logger(
