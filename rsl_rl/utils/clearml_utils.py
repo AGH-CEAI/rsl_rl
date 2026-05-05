@@ -30,6 +30,8 @@ class ClearmlSummaryWriter(SummaryWriter):
         except KeyError:
             raise KeyError("Please specify clearml_project in the runner config, e.g. `legged_gym`.") from None
 
+        self.enable_cfg_logging = cfg.get("clearml_log_cfg_as_hyperparams", True)
+
         # Initialize ClearML Task
         self.task = Task.current_task() or Task.init(
             project_name=project_name,
@@ -48,6 +50,8 @@ class ClearmlSummaryWriter(SummaryWriter):
         else:
             env_dict = env_cfg.to_dict() if hasattr(env_cfg, "to_dict") else asdict(env_cfg)
 
+        if not self.enable_cfg_logging:
+            return
         self.task.connect(runner_cfg, name="runner_cfg")
         self.task.connect(train_cfg.get("policy", {}), name="policy_cfg")
         self.task.connect(train_cfg.get("algorithm", {}), name="alg_cfg")
