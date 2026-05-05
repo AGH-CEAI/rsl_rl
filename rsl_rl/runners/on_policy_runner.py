@@ -45,6 +45,9 @@ class OnPolicyRunner:
         # Create the algorithm
         self.alg = self._construct_algorithm(obs)
 
+        # Parse reset-last-layer config
+        self.reset_last_layer_cfg = self._resolve_reset_last_layer_cfg(self.cfg.get("reset_last_layer_weights", None))
+
         # Create the logger
         self.logger = Logger(
             log_dir=log_dir,
@@ -105,6 +108,9 @@ class OnPolicyRunner:
 
             # Update policy
             loss_dict = self.alg.update()
+
+            # Reset last layer weights on schedule if configured
+            self._maybe_reset_last_layer_weights(it)
 
             stop = time.time()
             learn_time = stop - start
@@ -201,6 +207,38 @@ class OnPolicyRunner:
         if "rnd_cfg" in self.alg_cfg and self.alg_cfg["rnd_cfg"] is not None:
             default_sets.append("rnd_state")
         return default_sets
+
+    def _resolve_reset_last_layer_cfg(self, cfg: dict | None) -> dict:
+        """Parse and validate reset_last_layer_weights configuration."""
+        if cfg is None or cfg is False:
+            return {"enabled": False, "part": "both", "interval": None}
+
+        if not isinstance(cfg, dict):
+            raise ValueError("reset_last_layer_weights must be a dict or False")
+
+        part = cfg.get("part", "both")
+        if part not in {"actor", "critic", "both"}:
+            raise ValueError("reset_last_layer_weights.part must be 'actor', 'critic', or 'both'")
+
+        interval = cfg.get("interval", None)
+        if interval is None or interval <= 0:
+            return {"enabled": False, "part": part, "interval": None}
+        if not isinstance(interval, int):
+            raise ValueError("reset_last_layer_weights.interval must be an integer or omitted")
+
+        return {"enabled": True, "part": part, "interval": interval}
+
+    def _maybe_reset_last_layer_weights(self, it: int) -> None:
+        if not self.reset_last_layer_cfg["enabled"]:
+            return
+
+        interval = self.reset_last_layer_cfg["interval"]
+        part = self.reset_last_layer_cfg["part"]
+        if interval is None:
+            return
+
+        if (it + 1) % interval == 0:
+            self.alg.reset_last_layer_weights(part)
 
     def _configure_multi_gpu(self) -> None:
         """Configure multi-gpu training."""
