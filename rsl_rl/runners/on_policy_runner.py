@@ -112,9 +112,6 @@ class OnPolicyRunner:
             # Update policy
             loss_dict = self.alg.update()
 
-            # Reset last layer weights on schedule if configured
-            self._maybe_reset_last_layer_weights(it)
-
             stop = time.time()
             learn_time = stop - start
             self.current_learning_iteration = it
@@ -140,6 +137,9 @@ class OnPolicyRunner:
             # Save model
             if it % self.cfg["save_interval"] == 0:
                 self.save(os.path.join(self.logger.log_dir, f"model_{it}.pt"))  # type: ignore
+
+            # Reset last layer weights on schedule if configured
+            self._maybe_reset_last_layer_weights(it)
 
         # Save the final model after training
         if self.logger.log_dir is not None and not self.logger.disable_logs:
