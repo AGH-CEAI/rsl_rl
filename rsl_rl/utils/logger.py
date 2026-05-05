@@ -230,10 +230,10 @@ class Logger:
             # Clear extras buffer
             self.ep_extras.clear()
 
-    def save_model(self, path: str, it: int) -> None:
+    def save_model(self, path: str, it: int, custom_name: str | None = None) -> None:
         """Save the model to external logging services if specified."""
         if self.writer and not self.disable_logs and self.logger_type in Logger.LOGGER_TYPES:
-            self.writer.save_model(path, it)
+            self.writer.save_model(path, it, custom_name)
 
     def _prepare_logging_writer(self) -> None:
         """Prepare the logging writer, which can be either Tensorboard, W&B, Neptune or ClearML."""

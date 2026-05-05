@@ -130,9 +130,8 @@ class OnPolicyRunner:
             )
 
             # Save best model based on mean reward
-            if self.logger.log_dir is not None and not self.logger.disable_logs:
-                if len(self.logger.rewbuffer) > 0:
-                    self._update_best_model(it, statistics.mean(self.logger.rewbuffer))
+            if self.logger.log_dir is not None and not self.logger.disable_logs and len(self.logger.rewbuffer) > 0:
+                self._update_best_model(it, statistics.mean(self.logger.rewbuffer))
 
             # Save model
             if it % self.cfg["save_interval"] == 0:
@@ -151,7 +150,7 @@ class OnPolicyRunner:
                     f" Mean reward = {self._best_model_reward:.2f}\n"
                 )
 
-    def save(self, path: str, infos: dict | None = None) -> None:
+    def save(self, path: str, infos: dict | None = None, custom_name: str | None = None) -> None:
         # Save model
         saved_dict = {
             "model_state_dict": self.alg.policy.state_dict(),
@@ -167,7 +166,7 @@ class OnPolicyRunner:
         torch.save(saved_dict, path)
 
         # Upload model to external logging services
-        self.logger.save_model(path, self.current_learning_iteration)
+        self.logger.save_model(path, self.current_learning_iteration, custom_name)
 
     def load(self, path: str, load_optimizer: bool = True, map_location: str | None = None) -> dict:
         loaded_dict = torch.load(path, weights_only=False, map_location=map_location)
@@ -305,7 +304,7 @@ class OnPolicyRunner:
             return
 
         path = os.path.join(self.logger.log_dir, "model_best.pt")
-        self.save(path)
+        self.save(path, "model_best")
         self._best_model_reward = mean_reward
         self._best_model_iter = it
 
