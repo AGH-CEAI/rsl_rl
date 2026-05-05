@@ -304,7 +304,7 @@ class OnPolicyRunner:
             return
 
         path = os.path.join(self.logger.log_dir, "model_best.pt")
-        self.save(path, "model_best")
+        self.save(path=path, custom_name="model_best")
         self._best_model_reward = mean_reward
         self._best_model_iter = it
 
