@@ -34,6 +34,7 @@ class ActorCriticRecurrent(nn.Module):
         rnn_type: str = "lstm",
         rnn_hidden_dim: int = 256,
         rnn_num_layers: int = 1,
+        detach_actor_grad: bool = False,
         **kwargs: dict[str, Any],
     ) -> None:
         if "rnn_hidden_size" in kwargs:
@@ -52,6 +53,7 @@ class ActorCriticRecurrent(nn.Module):
 
         # Get the observation dimensions
         self.obs_groups = obs_groups
+        self.detach_actor_grad = detach_actor_grad
         num_actor_obs = 0
         for obs_group in obs_groups["policy"]:
             assert len(obs[obs_group].shape) == 2, "The ActorCriticRecurrent module only supports 1D observations."
@@ -206,7 +208,10 @@ class ActorCriticRecurrent(nn.Module):
 
     def get_actor_obs(self, obs: TensorDict) -> torch.Tensor:
         obs_list = [obs[obs_group] for obs_group in self.obs_groups["policy"]]
-        return torch.cat(obs_list, dim=-1)
+        actor_obs = torch.cat(obs_list, dim=-1)
+        if self.detach_actor_grad:
+            actor_obs = actor_obs.detach()
+        return actor_obs
 
     def get_critic_obs(self, obs: TensorDict) -> torch.Tensor:
         obs_list = [obs[obs_group] for obs_group in self.obs_groups["critic"]]

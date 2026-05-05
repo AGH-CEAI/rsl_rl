@@ -32,6 +32,7 @@ class ActorCriticCNN(ActorCritic):
         init_noise_std: float = 1.0,
         noise_std_type: str = "scalar",
         state_dependent_std: bool = False,
+        detach_actor_grad: bool = False,
         **kwargs: dict[str, Any],
     ) -> None:
         if kwargs:
@@ -43,6 +44,7 @@ class ActorCriticCNN(ActorCritic):
 
         # Get the observation dimensions
         self.obs_groups = obs_groups
+        self.detach_actor_grad = detach_actor_grad
         num_actor_obs_1d = 0
         self.actor_obs_groups_1d = []
         actor_in_dims_2d = []
@@ -244,7 +246,13 @@ class ActorCriticCNN(ActorCritic):
         obs_dict_2d = {}
         for obs_group in self.actor_obs_groups_2d:
             obs_dict_2d[obs_group] = obs[obs_group]
-        return torch.cat(obs_list_1d, dim=-1), obs_dict_2d
+
+        actor_obs_1d = torch.cat(obs_list_1d, dim=-1)
+        if self.detach_actor_grad:
+            actor_obs_1d = actor_obs_1d.detach()
+            obs_dict_2d = {k: v.detach() for k, v in obs_dict_2d.items()}
+
+        return actor_obs_1d, obs_dict_2d
 
     def get_critic_obs(self, obs: TensorDict) -> tuple[torch.Tensor, dict[str, torch.Tensor]]:
         obs_list_1d = [obs[obs_group] for obs_group in self.critic_obs_groups_1d]

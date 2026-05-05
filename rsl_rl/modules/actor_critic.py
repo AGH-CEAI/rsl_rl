@@ -30,6 +30,7 @@ class ActorCritic(nn.Module):
         init_noise_std: float = 1.0,
         noise_std_type: str = "scalar",
         state_dependent_std: bool = False,
+        detach_actor_grad: bool = False,
         **kwargs: dict[str, Any],
     ) -> None:
         if kwargs:
@@ -40,6 +41,7 @@ class ActorCritic(nn.Module):
 
         # Get the observation dimensions
         self.obs_groups = obs_groups
+        self.detach_actor_grad = detach_actor_grad
         num_actor_obs = 0
         for obs_group in obs_groups["policy"]:
             assert len(obs[obs_group].shape) == 2, "The ActorCritic module only supports 1D observations."
@@ -184,7 +186,10 @@ class ActorCritic(nn.Module):
 
     def get_actor_obs(self, obs: TensorDict) -> torch.Tensor:
         obs_list = [obs[obs_group] for obs_group in self.obs_groups["policy"]]
-        return torch.cat(obs_list, dim=-1)
+        actor_obs = torch.cat(obs_list, dim=-1)
+        if self.detach_actor_grad:
+            actor_obs = actor_obs.detach()
+        return actor_obs
 
     def get_critic_obs(self, obs: TensorDict) -> torch.Tensor:
         obs_list = [obs[obs_group] for obs_group in self.obs_groups["critic"]]
