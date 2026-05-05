@@ -77,8 +77,9 @@ class ClearmlSummaryWriter(SummaryWriter):
     def stop(self) -> None:
         self.task.close()
 
-    def save_model(self, model_path: str, it: int) -> None:
-        self.task.upload_artifact(name=f"model_{it}", artifact_object=model_path)
+    def save_model(self, model_path: str, it: int, custom_name: str | None = None) -> None:
+        name = custom_name if custom_name else f"model_{it}"
+        self.task.upload_artifact(name=name, artifact_object=model_path)
 
     def save_file(self, path: str) -> None:
         self.task.upload_artifact(name=os.path.basename(path), artifact_object=path)

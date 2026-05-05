@@ -6,6 +6,7 @@
 from __future__ import annotations
 
 import os
+import statistics
 import time
 import torch
 import warnings
@@ -61,6 +62,8 @@ class OnPolicyRunner:
         )
 
         self.current_learning_iteration = 0
+        self._best_model_reward: float = float("-inf")
+        self._best_model_iter: int = -1
 
     def learn(self, num_learning_iterations: int, init_at_random_ep_len: bool = False) -> None:
         # Randomize initial episode lengths (for exploration)
@@ -109,9 +112,6 @@ class OnPolicyRunner:
             # Update policy
             loss_dict = self.alg.update()
 
-            # Reset last layer weights on schedule if configured
-            self._maybe_reset_last_layer_weights(it)
-
             stop = time.time()
             learn_time = stop - start
             self.current_learning_iteration = it
@@ -129,15 +129,28 @@ class OnPolicyRunner:
                 rnd_weight=self.alg.rnd.weight if self.alg_cfg["rnd_cfg"] else None,
             )
 
+            # Save best model based on mean reward
+            if self.logger.log_dir is not None and not self.logger.disable_logs and len(self.logger.rewbuffer) > 0:
+                self._update_best_model(it, statistics.mean(self.logger.rewbuffer))
+
             # Save model
             if it % self.cfg["save_interval"] == 0:
                 self.save(os.path.join(self.logger.log_dir, f"model_{it}.pt"))  # type: ignore
 
+            # Reset last layer weights on schedule if configured
+            self._maybe_reset_last_layer_weights(it)
+
         # Save the final model after training
         if self.logger.log_dir is not None and not self.logger.disable_logs:
             self.save(os.path.join(self.logger.log_dir, f"model_{self.current_learning_iteration}.pt"))
+            if self._best_model_iter >= 0:
+                print(
+                    f"\nBest model:\n"
+                    f" Iteration = {self._best_model_iter}\n"
+                    f" Mean reward = {self._best_model_reward:.2f}\n"
+                )
 
-    def save(self, path: str, infos: dict | None = None) -> None:
+    def save(self, path: str, infos: dict | None = None, custom_name: str | None = None) -> None:
         # Save model
         saved_dict = {
             "model_state_dict": self.alg.policy.state_dict(),
@@ -153,7 +166,7 @@ class OnPolicyRunner:
         torch.save(saved_dict, path)
 
         # Upload model to external logging services
-        self.logger.save_model(path, self.current_learning_iteration)
+        self.logger.save_model(path, self.current_learning_iteration, custom_name)
 
     def load(self, path: str, load_optimizer: bool = True, map_location: str | None = None) -> dict:
         loaded_dict = torch.load(path, weights_only=False, map_location=map_location)
@@ -283,6 +296,19 @@ class OnPolicyRunner:
         torch.distributed.init_process_group(backend="nccl", rank=self.gpu_global_rank, world_size=self.gpu_world_size)
         # Set device to the local rank
         torch.cuda.set_device(self.gpu_local_rank)
+
+    def _update_best_model(self, it: int, mean_reward: float) -> None:
+        """Overwrite model_best.pt if mean_reward exceeds the current best."""
+        skip = self.cfg.get("best_model_skip_iters", 0)
+        if it < skip or mean_reward <= self._best_model_reward:
+            return
+
+        path = os.path.join(self.logger.log_dir, "model_best.pt")
+        self.save(path=path, custom_name="model_best")
+        self._best_model_reward = mean_reward
+        self._best_model_iter = it
+
+        print(f"New best model!\n Iteration = {it}\n Mean reward = {mean_reward:.2f}")
 
     def _construct_algorithm(self, obs: TensorDict) -> PPO:
         """Construct the actor-critic algorithm."""

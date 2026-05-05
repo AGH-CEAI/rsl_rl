@@ -82,8 +82,9 @@ class NeptuneSummaryWriter(SummaryWriter):
     def stop(self) -> None:
         self.run.stop()
 
-    def save_model(self, model_path: str, it: int) -> None:
-        self.run["model/saved_model_" + str(it)].upload(model_path)
+    def save_model(self, model_path: str, it: int, custom_name: str | None = None) -> None:
+        name = custom_name if custom_name else f"saved_model_{it}"
+        self.run[f"model/{name}"].upload(model_path)
 
     def save_file(self, path: str) -> None:
         name = path.rsplit("/", 1)[-1].split(".")[0]

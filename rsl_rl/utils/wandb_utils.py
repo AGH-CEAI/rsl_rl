@@ -67,7 +67,7 @@ class WandbSummaryWriter(SummaryWriter):
     def stop(self) -> None:
         wandb.finish()
 
-    def save_model(self, model_path: str, it: int) -> None:
+    def save_model(self, model_path: str, it: int, custom_name: str | None = None) -> None:
         wandb.save(model_path, base_path=os.path.dirname(model_path))
 
     def save_file(self, path: str) -> None:
